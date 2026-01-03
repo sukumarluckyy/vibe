@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, X } from 'lucide-react';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
@@ -27,6 +27,11 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isLoading }) => {
     }
   }, [debouncedQuery, onSearch]);
 
+  const handleClear = () => {
+    setQuery('');
+    onSearch('');
+  };
+
   return (
     <div className="search-wrapper">
       <div className="search-icon">
@@ -39,10 +44,15 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, isLoading }) => {
       <input
         type="text"
         className="search-input"
-        placeholder="Search..."
+        placeholder="Search songs..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
+      {query && (
+        <button onClick={handleClear} className="search-clear-btn" aria-label="Clear search">
+          <X size={16} />
+        </button>
+      )}
     </div>
   );
 };

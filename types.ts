@@ -3,16 +3,23 @@ export interface Song {
   title: string;
   artists: string;
   thumbnail: string;
-  duration: string; // The search API returns duration as a string "MM:SS"
+  duration: string;
 }
 
 export interface SongDetail {
   id: string;
   title: string;
-  duration: number; // The info API returns number
+  duration: number;
   viewCount: number;
   channel: string;
   thumbnails: { url: string; width: number; height: number }[];
 }
 
-export type PlayMode = 'sequence' | 'shuffle' | 'repeat';
+export interface Playlist {
+  id: string;
+  name: string;
+  songs: Song[];
+  createdAt: number;
+}
+
+export type PlayMode = 'sequence' | 'shuffle' | 'repeat' | 'loop-one';

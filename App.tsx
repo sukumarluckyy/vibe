@@ -2,28 +2,52 @@ import React, { useState, useCallback, useEffect } from 'react';
 import SearchBar from './components/SearchBar';
 import SongList from './components/SongList';
 import Player from './components/Player';
-import { Song } from './types';
+import Library from './components/Library';
+import { Song, Playlist } from './types';
 import { searchSongs, checkHealth, getStreamUrl } from './services/api';
 import { MOCK_SONGS, MOCK_STREAM_URL } from './services/mockData';
-import { AudioWaveform, WifiOff, Sun, Moon } from 'lucide-react';
+import { AudioWaveform, WifiOff, Sun, Moon, Home, Library as LibraryIcon, Menu, X } from 'lucide-react';
 
 // SET THIS TO FALSE TO USE REAL API
 const USE_MOCK_DATA = true;
 
+type View = 'home' | 'library';
+
 function App() {
+  const [view, setView] = useState<View>('home');
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [apiReady, setApiReady] = useState<boolean | null>(null);
   const [isDark, setIsDark] = useState(true);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Initialize Theme
+  // Library State (Persisted)
+  const [likedSongs, setLikedSongs] = useState<Song[]>(() => {
+    const saved = localStorage.getItem('vibe_liked');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [history, setHistory] = useState<Song[]>(() => {
+    const saved = localStorage.getItem('vibe_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [playlists, setPlaylists] = useState<Playlist[]>(() => {
+    const saved = localStorage.getItem('vibe_playlists');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Effects for Persistence
+  useEffect(() => localStorage.setItem('vibe_liked', JSON.stringify(likedSongs)), [likedSongs]);
+  useEffect(() => localStorage.setItem('vibe_history', JSON.stringify(history)), [history]);
+  useEffect(() => localStorage.setItem('vibe_playlists', JSON.stringify(playlists)), [playlists]);
+
+  // Initialize Theme (Target documentElement for <html> tag)
   useEffect(() => {
     if (isDark) {
-      document.body.classList.add('dark');
+      document.documentElement.classList.add('dark');
     } else {
-      document.body.classList.remove('dark');
+      document.documentElement.classList.remove('dark');
     }
   }, [isDark]);
 
@@ -39,9 +63,13 @@ function App() {
   }, []);
 
   const handleSearch = useCallback(async (query: string) => {
+    if (!query) {
+      setSearchResults([]);
+      return;
+    }
     setIsLoading(true);
+    setView('home'); // Switch to home on search
     if (USE_MOCK_DATA) {
-      // Simulate network delay for realistic feel
       setTimeout(() => {
         const lowerQuery = query.toLowerCase();
         const results = MOCK_SONGS.filter(
@@ -60,28 +88,61 @@ function App() {
   }, []);
 
   const handlePlay = (song: Song) => {
-    if (currentSong?.id === song.id) {
-      setIsPlaying(!isPlaying);
-    } else {
-      setCurrentSong(song);
-      setIsPlaying(true);
-    }
+    setCurrentSong(song);
+    // Add to history if not first item
+    setHistory(prev => {
+      const filtered = prev.filter(s => s.id !== song.id);
+      return [song, ...filtered].slice(0, 50); // Keep last 50
+    });
+  };
+
+  const handleToggleLike = (song: Song) => {
+    setLikedSongs(prev => {
+      const isLiked = prev.some(s => s.id === song.id);
+      if (isLiked) {
+        return prev.filter(s => s.id !== song.id);
+      } else {
+        return [song, ...prev];
+      }
+    });
+  };
+
+  const handleCreatePlaylist = (name: string) => {
+    const newPlaylist: Playlist = {
+      id: Date.now().toString(),
+      name,
+      songs: [],
+      createdAt: Date.now()
+    };
+    setPlaylists([...playlists, newPlaylist]);
+  };
+
+  const handleAddToPlaylist = (song: Song, playlistId: string) => {
+    setPlaylists(prev => prev.map(pl => {
+      if (pl.id === playlistId) {
+        // Avoid duplicates
+        if (pl.songs.some(s => s.id === song.id)) return pl;
+        return { ...pl, songs: [...pl.songs, song] };
+      }
+      return pl;
+    }));
+    alert(`Added "${song.title}" to playlist!`);
   };
 
   const handleNext = () => {
-    if (!currentSong || searchResults.length === 0) return;
-    const currentIndex = searchResults.findIndex(s => s.id === currentSong.id);
-    const nextIndex = (currentIndex + 1) % searchResults.length;
-    setCurrentSong(searchResults[nextIndex]);
-    setIsPlaying(true);
+    if (!currentSong) return;
+    const sourceList = searchResults.length > 0 ? searchResults : MOCK_SONGS;
+    const currentIndex = sourceList.findIndex(s => s.id === currentSong.id);
+    const nextIndex = (currentIndex + 1) % sourceList.length;
+    handlePlay(sourceList[nextIndex]);
   };
 
   const handlePrev = () => {
-    if (!currentSong || searchResults.length === 0) return;
-    const currentIndex = searchResults.findIndex(s => s.id === currentSong.id);
-    const prevIndex = (currentIndex - 1 + searchResults.length) % searchResults.length;
-    setCurrentSong(searchResults[prevIndex]);
-    setIsPlaying(true);
+    if (!currentSong) return;
+    const sourceList = searchResults.length > 0 ? searchResults : MOCK_SONGS;
+    const currentIndex = sourceList.findIndex(s => s.id === currentSong.id);
+    const prevIndex = (currentIndex - 1 + sourceList.length) % sourceList.length;
+    handlePlay(sourceList[prevIndex]);
   };
 
   if (apiReady === false) {
@@ -98,10 +159,11 @@ function App() {
     );
   }
 
-  // Determine the correct stream URL based on mode
   const currentStreamUrl = currentSong 
     ? (USE_MOCK_DATA ? MOCK_STREAM_URL : getStreamUrl(currentSong.id)) 
     : '';
+
+  const isCurrentLiked = currentSong ? likedSongs.some(s => s.id === currentSong.id) : false;
 
   return (
     <div className="app-container">
@@ -110,65 +172,165 @@ function App() {
       <header className="app-header">
         <div className="header-content">
           
-          {/* Logo */}
-          <div className="logo">
-            <AudioWaveform size={24} />
-            <span>vibe</span>
+          {/* Left: Logo */}
+          <div className="header-left">
+            <div className="logo">
+              <AudioWaveform size={24} color="var(--primary-color)" />
+              <span className="logo-text">vibe</span>
+            </div>
           </div>
 
-          {/* Search */}
-          <SearchBar onSearch={handleSearch} isLoading={isLoading} />
+          {/* Center: Nav Group (Desktop only) */}
+          <div className="header-center nav-group-desktop">
+            <button 
+              className={`nav-btn ${view === 'home' ? 'active' : ''}`}
+              onClick={() => setView('home')}
+            >
+              <Home size={18} />
+              <span className="nav-label">Home</span>
+            </button>
 
-          {/* Theme Toggle */}
-          <button onClick={toggleTheme} className="theme-toggle">
-            {isDark ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
+            <button 
+              className={`nav-btn ${view === 'library' ? 'active' : ''}`}
+              onClick={() => setView('library')}
+            >
+              <LibraryIcon size={18} />
+              <span className="nav-label">Library</span>
+            </button>
+          </div>
+
+          {/* Right: Search + Theme + Mobile Menu */}
+          <div className="header-right">
+            <SearchBar onSearch={handleSearch} isLoading={isLoading} />
+            
+            <button onClick={toggleTheme} className="theme-toggle desktop-only" aria-label="Toggle Theme">
+              {isDark ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+
+            <button 
+              className="hamburger-btn mobile-only"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Menu Dropdown */}
+        {isMobileMenuOpen && (
+          <div className="mobile-menu-dropdown">
+             <button 
+              className={`mobile-menu-item ${view === 'home' ? 'active' : ''}`}
+              onClick={() => { setView('home'); setIsMobileMenuOpen(false); }}
+            >
+              <Home size={20} />
+              <span>Home</span>
+            </button>
+            <button 
+              className={`mobile-menu-item ${view === 'library' ? 'active' : ''}`}
+              onClick={() => { setView('library'); setIsMobileMenuOpen(false); }}
+            >
+              <LibraryIcon size={20} />
+              <span>Library</span>
+            </button>
+            <div className="mobile-menu-divider"></div>
+            <button 
+              className="mobile-menu-item"
+              onClick={() => { toggleTheme(); setIsMobileMenuOpen(false); }}
+            >
+              {isDark ? <Sun size={20} /> : <Moon size={20} />}
+              <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Main Content */}
       <main className="main-container">
-        {searchResults.length === 0 && !isLoading && (
-          <div className="hero-section">
-            <h1 className="hero-title">
-              Find your vibe.
-            </h1>
-            <p className="hero-subtitle">
-              Search for your favorite tracks above and start listening instantly.
-            </p>
-          </div>
+        
+        {view === 'home' && (
+          <>
+            {searchResults.length === 0 && !isLoading ? (
+              <div className="hero-section">
+                <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'10px', marginBottom:'10px'}}>
+                  <AudioWaveform size={40} color="var(--primary-color)" />
+                </div>
+                <h1 className="hero-title">
+                  Find your vibe.
+                </h1>
+                <p className="hero-subtitle">
+                  Search for your favorite tracks above and start listening instantly.
+                </p>
+
+                {/* Show Liked Songs Preview on Home if available */}
+                {likedSongs.length > 0 && (
+                  <div style={{ marginTop: '40px', textAlign: 'left' }}>
+                    <h3 className="section-title">Your Favorites</h3>
+                    <SongList 
+                      songs={likedSongs.slice(0, 4)} 
+                      currentSong={currentSong} 
+                      isPlaying={!isFullScreen && !!currentSong} 
+                      onPlay={handlePlay}
+                      onAddToPlaylist={handleAddToPlaylist}
+                      playlists={playlists}
+                      viewMode="grid" // Preview in grid
+                    />
+                    <button 
+                      onClick={() => setView('library')}
+                      style={{ marginTop: '20px', background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500 }}
+                    >
+                      View all favorites →
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="content-area">
+                <div className="results-header">
+                  <h2 className="section-title">
+                    {isLoading ? 'Searching...' : 'Results'}
+                  </h2>
+                </div>
+                
+                <SongList 
+                  songs={searchResults} 
+                  currentSong={currentSong} 
+                  isPlaying={!isFullScreen && !!currentSong} 
+                  onPlay={handlePlay} 
+                  onAddToPlaylist={handleAddToPlaylist}
+                  playlists={playlists}
+                  viewMode="list"
+                />
+              </div>
+            )}
+          </>
         )}
 
-        {/* Results/List */}
-        <div className="content-area">
-          {(searchResults.length > 0 || isLoading) && (
-            <div className="results-header">
-              <h2 className="results-title">
-                {isLoading ? 'Searching...' : 'Results'}
-              </h2>
-               {searchResults.length > 0 && !isLoading && (
-                 <span className="results-count">
-                   {searchResults.length} tracks
-                 </span>
-               )}
-            </div>
-          )}
-          
-          <SongList 
-            songs={searchResults} 
-            currentSong={currentSong} 
-            isPlaying={isPlaying} 
-            onPlay={handlePlay} 
+        {view === 'library' && (
+          <Library 
+            history={history}
+            likedSongs={likedSongs}
+            playlists={playlists}
+            currentSong={currentSong}
+            isPlaying={!isFullScreen && !!currentSong}
+            onPlay={handlePlay}
+            onCreatePlaylist={handleCreatePlaylist}
+            onAddToPlaylist={handleAddToPlaylist}
           />
-        </div>
+        )}
       </main>
 
-      {/* Player Overlay */}
+      {/* Player (Mini and Full Screen) */}
       <Player 
         currentSong={currentSong} 
         streamUrl={currentStreamUrl}
         onNext={handleNext} 
         onPrev={handlePrev}
+        isFullScreen={isFullScreen}
+        onOpenFullScreen={() => setIsFullScreen(true)}
+        onCloseFullScreen={() => setIsFullScreen(false)}
+        onToggleLike={handleToggleLike}
+        isLiked={isCurrentLiked}
       />
     </div>
   );
