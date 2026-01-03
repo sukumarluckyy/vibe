@@ -11,14 +11,11 @@ interface SongListProps {
 
 const SongList: React.FC<SongListProps> = ({ songs, currentSong, isPlaying, onPlay }) => {
   if (songs.length === 0) {
-    // Only show if we actually searched and found nothing is handled by parent or different state, 
-    // but here we just render empty or nothing. 
-    // Parent handles empty state view for initial load.
     return null;
   }
 
   return (
-    <div className="space-y-2 w-full max-w-4xl mx-auto">
+    <div className="song-list">
       {songs.map((song) => {
         const isCurrent = currentSong?.id === song.id;
         
@@ -26,40 +23,36 @@ const SongList: React.FC<SongListProps> = ({ songs, currentSong, isPlaying, onPl
           <div
             key={song.id}
             onClick={() => onPlay(song)}
-            className={`group flex items-center p-3 rounded-xl transition-all duration-200 cursor-pointer border border-transparent
-              ${isCurrent 
-                ? 'bg-primary-500/10 border-primary-500/20' 
-                : 'hover:bg-gray-100 dark:hover:bg-dark-800 hover:border-gray-200 dark:hover:border-dark-700'
-              }`}
+            className={`song-item ${isCurrent ? 'active' : ''}`}
           >
             {/* Thumbnail */}
-            <div className="relative h-12 w-12 flex-shrink-0 mr-4">
+            <div className="song-thumbnail-wrapper">
               <img
                 src={song.thumbnail}
                 alt={song.title}
-                className={`h-full w-full object-cover rounded-md shadow-sm ${isCurrent && isPlaying ? 'opacity-50' : ''}`}
+                className="song-thumbnail"
               />
-              <div className={`absolute inset-0 flex items-center justify-center ${isCurrent ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+              <div className="song-overlay">
                  {isCurrent && isPlaying ? (
-                   <BarChart2 className="w-5 h-5 text-white drop-shadow-md animate-pulse" />
+                   <BarChart2 size={20} color="white" />
                  ) : (
-                   <Play className="w-5 h-5 text-white drop-shadow-md fill-current" />
+                   <Play size={20} color="white" fill="white" />
                  )}
               </div>
             </div>
 
             {/* Info */}
-            <div className="flex-1 min-w-0">
-              <h3 className={`text-sm font-medium truncate ${isCurrent ? 'text-primary-600 dark:text-primary-400' : 'text-gray-900 dark:text-gray-200'}`}>
+            <div className="song-info">
+              <h3 className="song-title">
                 {song.title}
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-500 truncate mt-0.5">
+              <p className="song-artist">
                 {song.artists}
               </p>
             </div>
 
             {/* Duration */}
-            <div className="ml-4 text-xs text-gray-400 dark:text-gray-500 font-mono">
+            <div className="song-duration">
               {song.duration}
             </div>
           </div>

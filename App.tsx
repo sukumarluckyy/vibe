@@ -21,9 +21,9 @@ function App() {
   // Initialize Theme
   useEffect(() => {
     if (isDark) {
-      document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
     } else {
-      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
     }
   }, [isDark]);
 
@@ -86,16 +86,14 @@ function App() {
 
   if (apiReady === false) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-dark-900 flex items-center justify-center p-4">
-        <div className="text-center space-y-4 max-w-md">
-           <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <WifiOff className="w-8 h-8 text-red-500" />
-           </div>
-           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Connection Error</h1>
-           <p className="text-gray-500 dark:text-gray-400">
-             Could not connect to the Music API. Please ensure the local server is running at <code className="bg-gray-200 dark:bg-dark-800 px-1 py-0.5 rounded text-gray-700 dark:text-gray-300">http://localhost:4000</code>.
-           </p>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: '20px' }}>
+         <div style={{ padding: '20px', backgroundColor: '#fee2e2', borderRadius: '50%' }}>
+            <WifiOff size={32} color="#ef4444" />
+         </div>
+         <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Connection Error</h1>
+         <p style={{ color: '#666' }}>
+           Could not connect to the Music API. Ensure localhost:4000 is running.
+         </p>
       </div>
     );
   }
@@ -106,57 +104,50 @@ function App() {
     : '';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-dark-900 text-gray-900 dark:text-white font-sans selection:bg-primary-500/30 transition-colors duration-300">
+    <div className="app-container">
       
       {/* Floating Header */}
-      <header className="fixed top-4 left-0 right-0 z-40 px-4 flex justify-center pointer-events-none">
-        <div className="w-full max-w-5xl pointer-events-auto bg-white/80 dark:bg-dark-900/80 backdrop-blur-xl border border-gray-200 dark:border-dark-700 rounded-full shadow-lg px-4 py-2 flex items-center gap-4 transition-all duration-300">
+      <header className="app-header">
+        <div className="header-content">
           
           {/* Logo */}
-          <div className="flex items-center gap-2 pr-4 border-r border-gray-200 dark:border-dark-700">
-            <div className="w-8 h-8 flex items-center justify-center">
-              <AudioWaveform className="w-6 h-6 text-black dark:text-white" />
-            </div>
-            <span className="font-bold text-lg tracking-tight hidden sm:block text-black dark:text-white">vibe</span>
+          <div className="logo">
+            <AudioWaveform size={24} />
+            <span>vibe</span>
           </div>
 
           {/* Search */}
-          <div className="flex-1">
-             <SearchBar onSearch={handleSearch} isLoading={isLoading} />
-          </div>
+          <SearchBar onSearch={handleSearch} isLoading={isLoading} />
 
           {/* Theme Toggle */}
-          <button 
-            onClick={toggleTheme}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-800 text-gray-600 dark:text-gray-400 transition-colors"
-          >
-            {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          <button onClick={toggleTheme} className="theme-toggle">
+            {isDark ? <Sun size={20} /> : <Moon size={20} />}
           </button>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 pt-32 pb-32">
+      <main className="main-container">
         {searchResults.length === 0 && !isLoading && (
-          <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <h1 className="text-4xl sm:text-6xl font-bold mb-6 tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-500 dark:from-white dark:to-gray-500">
+          <div className="hero-section">
+            <h1 className="hero-title">
               Find your vibe.
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 text-lg max-w-lg mx-auto">
+            <p className="hero-subtitle">
               Search for your favorite tracks above and start listening instantly.
             </p>
           </div>
         )}
 
         {/* Results/List */}
-        <div className="mt-4">
+        <div className="content-area">
           {(searchResults.length > 0 || isLoading) && (
-            <div className="flex items-center justify-between mb-4 px-2">
-              <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <div className="results-header">
+              <h2 className="results-title">
                 {isLoading ? 'Searching...' : 'Results'}
               </h2>
                {searchResults.length > 0 && !isLoading && (
-                 <span className="text-xs text-gray-600 dark:text-gray-300 bg-gray-200 dark:bg-dark-800 px-2 py-1 rounded">
+                 <span className="results-count">
                    {searchResults.length} tracks
                  </span>
                )}
