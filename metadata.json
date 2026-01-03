@@ -1,0 +1,5 @@
+{
+  "name": "vibe",
+  "description": "A modern, minimal online music player powered by a local YouTube Music API.",
+  "requestFramePermissions": []
+}
