@@ -36,6 +36,14 @@ export const getSongInfo = async (id: string): Promise<SongDetail | null> => {
   }
 };
 
-export const getStreamUrl = (id: string): string => {
-  return `${BASE_URL}/stream/${id}`;
+export const getStreamUrl = async (id: string): Promise<string> => {
+  try {
+    const res = await fetch(`${BASE_URL}/stream/${id}`);
+    if (!res.ok) throw new Error('Network response was not ok');
+    const data = await res.json();
+    return data.audioUrl || '';
+  } catch (error) {
+    console.error("Get stream URL failed", error);
+    return '';
+  }
 };

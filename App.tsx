@@ -17,6 +17,7 @@ function App() {
   const [view, setView] = useState<View>('home');
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
+  const [currentStreamUrl, setCurrentStreamUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [apiReady, setApiReady] = useState<boolean | null>(null);
   const [isDark, setIsDark] = useState(true);
@@ -61,6 +62,33 @@ function App() {
     }
     checkHealth().then(setApiReady);
   }, []);
+
+  // Fetch Stream URL when current song changes
+  useEffect(() => {
+    if (!currentSong) {
+      setCurrentStreamUrl('');
+      return;
+    }
+
+    // Reset URL to prevent playing previous song while fetching new one
+    setCurrentStreamUrl('');
+
+    if (USE_MOCK_DATA) {
+      setCurrentStreamUrl(MOCK_STREAM_URL);
+      return;
+    }
+
+    let isMounted = true;
+    getStreamUrl(currentSong.id).then((url) => {
+      if (isMounted && url) {
+        setCurrentStreamUrl(url);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentSong]);
 
   const handleSearch = useCallback(async (query: string) => {
     if (!query) {
@@ -158,10 +186,6 @@ function App() {
       </div>
     );
   }
-
-  const currentStreamUrl = currentSong 
-    ? (USE_MOCK_DATA ? MOCK_STREAM_URL : getStreamUrl(currentSong.id)) 
-    : '';
 
   const isCurrentLiked = currentSong ? likedSongs.some(s => s.id === currentSong.id) : false;
 
